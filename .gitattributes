@@ -1,0 +1,5 @@
+data/nuclear_waste_container/G4_data/* filter=lfs diff=lfs merge=lfs -text
+data/Wooden_statue_copper_cylinder/Data* filter=lfs diff=lfs merge=lfs -text
+data/MuoscopeStatue_4Scale_1-2-2016_5M_Bronze_Scattering/G4_data/MuoscopeStatue_4Scale_1-2-2016_5M_Bronze_Scattering.csv filter=lfs diff=lfs merge=lfs -text
+data/* filter=lfs diff=lfs merge=lfs -text
+data/Wooden_statue_copper_cylinder/DataCu.csv filter=lfs diff=lfs merge=lfs -text
