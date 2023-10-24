@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "tracking_analysis_GenPart.C": "cpp",
+        "tracking_analysis.C": "cpp"
+    }
+}
