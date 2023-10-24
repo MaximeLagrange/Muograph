@@ -62,7 +62,7 @@ class analysis:
         with open(self.output_dir+"tracks","rb") as f:
             tracks = pickle.load(f)
             
-        poca = POCA(tracks=tracks)
+        poca = POCA(output_dir=self.output_dir,tracks=tracks)
         poca.save(self.output_dir)
         del poca
     
@@ -74,6 +74,12 @@ class analysis:
         asr.save(self.output_dir,triggered_vox_only=True)
         del asr
         
-    def load_pickle(self,keyword:str):
-        with open(self.output_dir+keyword,"rb") as f:
-            return pickle.load(f)
+    def load_pickle(self,keyword:str,file_path:str=None):
+        
+        if(file_path is None):
+            with open(self.output_dir+keyword,"rb") as f:
+                return pickle.load(f)
+        else:
+            with open(file_path,"rb") as f:
+                return pickle.load(f)
+            

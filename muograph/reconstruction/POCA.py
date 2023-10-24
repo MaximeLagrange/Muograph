@@ -5,6 +5,9 @@ import matplotlib.pyplot as plt
 import torch
 from torch import Tensor, nn
 import pandas as pd
+import functools
+from functools import partial
+NoneType = type(None)
 
 from typing import Dict, List, Union, Tuple, Optional
 # from __future__ import annotations
@@ -54,7 +57,12 @@ def len_list(vox_list:List)->int:
 
 class POCA:
 
-    def __init__(self, tracks:Tracking, cut_low_theta:float=0.0001)->None:
+    
+    def __init__(self, output_dir:str, tracks:Tracking, cut_low_theta:float=0.0001)->None:
+        
+         # Create output directory
+        self.output_dir = output_dir+"POCA/"
+        self.create_directory(self.output_dir)
         
         self.tracks = copy.deepcopy(tracks)
         print('\nTotal # event = ', len(tracks.dtheta))
@@ -71,10 +79,10 @@ class POCA:
         self.VOI = self.tracks.voi
 
         # POCA points
-        self.POCA_points = self.Compute_POCA_points()
+        self.POCA_points = self.compute_POCA_points()
 
         # Discard events for which POCA point is outside the VOI
-        self.mask_inside_VOI = self.Compute_mask_VOI()
+        self.mask_inside_VOI = self.compute_mask_VOI()
 
         # Filter POCA points
         self.POCA_points = self.POCA_points[self.mask_inside_VOI]
@@ -83,12 +91,21 @@ class POCA:
         self.tracks.Apply_mask(self.mask_inside_VOI)
 
         # Mask associated with events filtering
-        self.total_mask = self.Compute_total_mask()
+        self.total_mask = self.compute_total_mask()
 
         # Voxel indices associated with POCA point location
-        self.indices = self.Assign_voxel_POCA()
+        self.indices = self.assign_voxel_POCA()
 
-    def Compute_total_mask(self) -> Tensor:
+        
+    def create_directory(self, dir_name:str) -> None:
+
+            import os
+            if(os.path.exists(dir_name)==False):
+                os.mkdir(dir_name)
+                print("\n{} directory created".format(dir_name))
+        
+        
+    def compute_total_mask(self) -> Tensor:
 
         total_mask = torch.zeros_like(self.mask_low_dtheta,dtype=bool)
         for i in progress_bar(range(len(self.mask_inside_VOI))):
@@ -98,7 +115,7 @@ class POCA:
         return total_mask
 
     
-    def Compute_POCA_points(self)->Tensor:
+    def compute_POCA_points(self)->Tensor:
 
         from numpy import cross
 
@@ -148,7 +165,7 @@ class POCA:
         return M
 
     
-    def Assign_voxel_POCA(self)->list:
+    def assign_voxel_POCA(self)->list:
 
         '''
         - Assign a voxel to a POCA point for each event
@@ -198,7 +215,7 @@ class POCA:
         return indices.int()
     
 
-    def Compute_mask_VOI(self)->Tensor:
+    def compute_mask_VOI(self)->Tensor:
 
         '''
         Only keep events for which POCA point is located INSIDE the VOI.
@@ -214,7 +231,7 @@ class POCA:
         return (masks[0] & masks[1] & masks[2])
  
 
-    def Assign_score_voxel(self, score_feature:Tensor, dtheta_min_max:Tuple[float])->List:
+    def assign_score_voxel(self, score_feature:Tensor, dtheta_min_max:List[float])->List:
 
         '''
         Each event for which (dtheta_min<dtheta<dtheta_max) 
@@ -246,7 +263,9 @@ class POCA:
         return score_list
 
     
-    def Compute_final_voxel_score(self,score_list:List,score_method,quartile:int=None,filename:str=None)->Tensor:
+    def compute_final_voxel_score(self,
+                                  score_list:List,
+                                  score_method:functools.partial)->Tensor:
         '''
         Computes the final score of every voxel, using score_method as input.
 
@@ -254,6 +273,7 @@ class POCA:
 
         For loop has to be changed!
         '''
+        
         from fastprogress import progress_bar
 
         final_voxel_scores = torch.zeros(self.VOI.n_vox_xyz[0],
@@ -267,15 +287,68 @@ class POCA:
                 for k in range(self.VOI.n_vox_xyz[2]):
 
                     if(score_list[i][j][k]!=[]):
-                        if(quartile is None):
                             final_voxel_scores[i,j,k] = score_method(score_list[i][j][k])
-                        else:
-                            final_voxel_scores[i,j,k] = score_method(score_list[i][j][k],quartile)
                     else:
                         final_voxel_scores[i,j,k] = 0.
         print('DONE')
         
         return final_voxel_scores
+    
+    
+    def poca_analysis(self,
+                      score_feature:Tuple[torch.tensor,str],
+                      dtheta_range:List[float],
+                      score_method:functools.partial,
+                      save:bool=False,
+                      plot:bool=True) -> torch.tensor:
+        
+        def get_partial_name_args(func:Union[functools.partial,NoneType]) -> Union[str]:
+
+            if(func is not None):
+                func_name = func.func.__name__
+                args, values = list(func.keywords.keys()), list(func.keywords.values())
+
+                for i, arg in enumerate(args):
+                    func_name+="_{}={}".format(arg,values[i])
+                    
+                return func_name
+            else:
+                return "None"
+        
+        # create output directory
+        self.poca_params = {"score_feature":score_feature[1],
+                          "score_method":get_partial_name_args(score_method),
+                          "dtheta_range":dtheta_range}
+        
+        self.poca_name = self.get_poca_name()
+        self.dir_name = self.output_dir + self.poca_name + "/"
+        self.create_directory(dir_name=self.dir_name)
+        
+        # Analysis
+        score_list = self.assign_score_voxel(score_feature=score_feature[0],
+                                             dtheta_min_max=dtheta_range)
+        
+        final_scores = self.compute_final_voxel_score(score_list=score_list,
+                                                      score_method=score_method)
+        
+        if save:
+            with open(self.dir_name+"poca_final_scores", "wb") as f:
+                pickle.dump(final_scores,f)
+                
+        if plot:
+            from plotting.Plotting import plot_VOI_pred
+            plot_VOI_pred(preds=final_scores, filename=self.dir_name+"poca_plot")
+            
+        return final_scores
+       
+    
+    def get_poca_name(self,) -> str:
+        
+        feature = "feature_{}_".format(self.poca_params["score_feature"])
+        method = "method_{}_".format(self.poca_params["score_method"])
+        dtheta = "{:.2f}_{:.2f}_rad".format(self.poca_params["dtheta_range"][0],self.poca_params["dtheta_range"][1])
+                
+        return feature+method+dtheta
     
     
     def save(self,directory:str) -> None:
@@ -329,14 +402,3 @@ class POCA:
     def reweight(self,voxel_std:torch.tensor) -> torch.tensor:
         
         voxel_std = voxel_std - torch.min(voxel_std) / (torch.max(voxel_std) - torch.min(voxel_std))
-        
-        
-
-
-
-                    
-
-
-
-    
-        
