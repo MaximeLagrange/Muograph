@@ -69,7 +69,8 @@ class POCA:
 
         # Compute a mask rejecting events with low scattering angles 
         # (theta<0.01 rad = 0.5 deg)
-        self.mask_low_dtheta = tracks.dtheta>cut_low_theta # in rad
+        self.cut_low_theta = cut_low_theta
+        self.mask_low_dtheta = tracks.dtheta>self.cut_low_theta # in rad
 
         # Discard events with dtheta<0.01 rad
         self.tracks.Apply_mask(self.mask_low_dtheta)
@@ -95,6 +96,15 @@ class POCA:
 
         # Voxel indices associated with POCA point location
         self.indices = self.assign_voxel_POCA()
+        
+    def __repr__(self,) -> str:
+        
+        n_event = "Total # event = {}".format(len(self.mask_low_dtheta))
+        n_event_dtheta = "# POCA dtheta > {:.2f} deg = {}".format(self.cut_low_theta*180/math.pi,self.mask_low_dtheta.sum())
+        n_in_VOI = "# POCA in VOI = {}".format(self.mask_inside_VOI.sum())
+        
+        return "POCA points:\n"+n_event+"\n"+n_event_dtheta+"\n"+n_in_VOI
+        
 
         
     def create_directory(self, dir_name:str) -> None:
