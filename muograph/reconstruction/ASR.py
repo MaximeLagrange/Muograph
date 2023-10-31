@@ -14,7 +14,6 @@ NoneType = type(None)
 # Librairy
 from tracking.Tracking import *
 from volume.Volume_Interest import *
-from reconstruction.POCA import mean_list, median_list, RMS_list
 
 class ASR():
 

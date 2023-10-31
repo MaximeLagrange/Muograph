@@ -8,52 +8,18 @@ import pandas as pd
 import functools
 from functools import partial
 NoneType = type(None)
-
 from typing import Dict, List, Union, Tuple, Optional
-# from __future__ import annotations
 import copy
 
 # Display latex
 from IPython.display import display, Math
 
+# Muograph
 from tracking.Tracking import *
 from volume.Volume_Interest import *
 
-def save_POCA(final_voxel_scores:Tensor,POCA_points:Tensor,filename:str)->None:
-        
-        torch.save(final_voxel_scores, filename+'voxel_scores.pt')
-        torch.save(POCA_points, filename+'POCA_points.pt')
-
-def Normalise_density_pred(density_pred:Tensor):
-    
-    return (density_pred-torch.min(density_pred))/(torch.max(density_pred)-torch.min(density_pred))
 
 
-
-def mean_list(vox_list:List)->float:
-    '''
-    return the mean of the input list
-    '''
-    return np.mean(vox_list)
-
-def median_list(vox_list:List, quartile:int)->float:
-    '''
-    Returns the quartile of the input list.
-    Quartile:int must respect 0 < quartile < 100
-    '''
-    return np.percentile(vox_list,quartile)
-
-def RMS_list(vox_list:List)->float:
-    '''
-    Return the RMS of the input list.
-    '''
-    return np.sqrt(np.sum(np.array(vox_list)**2))
-
-def len_list(vox_list:List)->int:
-    '''
-    return the length of the list
-    '''
-    return len(vox_list)
 
 class POCA:
 
@@ -105,7 +71,6 @@ class POCA:
         
         return "POCA points:\n"+n_event+"\n"+n_event_dtheta+"\n"+n_in_VOI
         
-
         
     def create_directory(self, dir_name:str) -> None:
 
@@ -312,7 +277,7 @@ class POCA:
                       save:bool=False,
                       plot:bool=True) -> torch.tensor:
         
-        def get_partial_name_args(func:Union[functools.partial,NoneType]) -> Union[str]:
+        def get_partial_name_args(func:Union[functools.partial,NoneType]) -> Union[str,NoneType]:
 
             if(func is not None):
                 func_name = func.func.__name__
@@ -394,21 +359,3 @@ class POCA:
         df['z_out'] = self.tracks.xyz_out[2]
         
         df.to_csv(filename + '.csv',index=False)
-
-
-    def compute_voxel_std(self,) -> torch.tensor:
-        
-        voxel_std = torch.zeros([self.VOI.n_vox_xyz[0],
-                                 self.VOI.n_vox_xyz[1],
-                                 self.VOI.n_vox_xyz[2]])
-        
-        for i in range(self.VOI.n_vox_xyz[0]):
-            for j in range(self.VOI.n_vox_xyz[1]):
-                for k in range(self.VOI.n_vox_xyz[2]):
-                    
-                    voxel_std = torch.std(dtheta)
-                    
-                    
-    def reweight(self,voxel_std:torch.tensor) -> torch.tensor:
-        
-        voxel_std = voxel_std - torch.min(voxel_std) / (torch.max(voxel_std) - torch.min(voxel_std))
