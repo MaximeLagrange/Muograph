@@ -10,7 +10,9 @@ from IPython.display import display, Math
     
 class VolumeInterest():
 
-    def __init__(self,position:Tuple[float],dimension:Tuple[float],voxel_width:float=10):
+    def __init__(self,position:Tuple[float],
+                 dimension:Tuple[float],
+                 voxel_width:float=10) -> None:
 
         '''
         position = [x,y,z] in mm
