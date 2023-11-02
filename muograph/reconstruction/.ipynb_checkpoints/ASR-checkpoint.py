@@ -14,7 +14,6 @@ NoneType = type(None)
 # Librairy
 from tracking.Tracking import *
 from volume.Volume_Interest import *
-from reconstruction.POCA import mean_list, median_list, RMS_list
 
 class ASR():
 
@@ -273,14 +272,12 @@ class ASR():
         def get_partial_name_args(func:Union[functools.partial,NoneType]) -> Union[str]:
 
             if(func is not None):
-
                 func_name = func.func.__name__
                 args, values = list(func.keywords.keys()), list(func.keywords.values())
 
                 for i, arg in enumerate(args):
-
                     func_name+="_{}={}".format(arg,values[i])
-
+                    
                 return func_name
             else:
                 return "None"

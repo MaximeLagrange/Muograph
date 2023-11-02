@@ -24,7 +24,7 @@ from volume.Volume_Interest import *
 class POCA:
 
     
-    def __init__(self, output_dir:str, tracks:Tracking, cut_low_theta:float=0.0001)->None:
+    def __init__(self, tracks:Tracking, output_dir:str, cut_low_theta:float=0.0001)->None:
         
          # Create output directory
         self.output_dir = output_dir+"POCA/"
@@ -63,6 +63,7 @@ class POCA:
         # Voxel indices associated with POCA point location
         self.indices = self.assign_voxel_POCA()
         
+        
     def __repr__(self,) -> str:
         
         n_event = "Total # event = {}".format(len(self.mask_low_dtheta))
@@ -83,6 +84,7 @@ class POCA:
     def compute_total_mask(self) -> Tensor:
 
         total_mask = torch.zeros_like(self.mask_low_dtheta,dtype=bool)
+        print("")
         for i in progress_bar(range(len(self.mask_inside_VOI))):
             if(self.mask_inside_VOI[i]):
                 total_mask[np.flatnonzero(self.mask_low_dtheta)[i]]=True
@@ -277,7 +279,7 @@ class POCA:
                       save:bool=False,
                       plot:bool=True) -> torch.tensor:
         
-        def get_partial_name_args(func:Union[functools.partial,NoneType]) -> Union[str,NoneType]:
+        def get_partial_name_args(func:Union[functools.partial,NoneType]) -> Union[str]:
 
             if(func is not None):
                 func_name = func.func.__name__
@@ -359,3 +361,21 @@ class POCA:
         df['z_out'] = self.tracks.xyz_out[2]
         
         df.to_csv(filename + '.csv',index=False)
+
+
+    def compute_voxel_std(self,) -> torch.tensor:
+        
+        voxel_std = torch.zeros([self.VOI.n_vox_xyz[0],
+                                 self.VOI.n_vox_xyz[1],
+                                 self.VOI.n_vox_xyz[2]])
+        
+        for i in range(self.VOI.n_vox_xyz[0]):
+            for j in range(self.VOI.n_vox_xyz[1]):
+                for k in range(self.VOI.n_vox_xyz[2]):
+                    
+                    voxel_std = torch.std(dtheta)
+                    
+                    
+    def reweight(self,voxel_std:torch.tensor) -> torch.tensor:
+        
+        voxel_std = voxel_std - torch.min(voxel_std) / (torch.max(voxel_std) - torch.min(voxel_std))

@@ -8,57 +8,23 @@ import pandas as pd
 import functools
 from functools import partial
 NoneType = type(None)
-
 from typing import Dict, List, Union, Tuple, Optional
-# from __future__ import annotations
 import copy
 
 # Display latex
 from IPython.display import display, Math
 
+# Muograph
 from tracking.Tracking import *
 from volume.Volume_Interest import *
 
-def save_POCA(final_voxel_scores:Tensor,POCA_points:Tensor,filename:str)->None:
-        
-        torch.save(final_voxel_scores, filename+'voxel_scores.pt')
-        torch.save(POCA_points, filename+'POCA_points.pt')
-
-def Normalise_density_pred(density_pred:Tensor):
-    
-    return (density_pred-torch.min(density_pred))/(torch.max(density_pred)-torch.min(density_pred))
 
 
-
-def mean_list(vox_list:List)->float:
-    '''
-    return the mean of the input list
-    '''
-    return np.mean(vox_list)
-
-def median_list(vox_list:List, quartile:int)->float:
-    '''
-    Returns the quartile of the input list.
-    Quartile:int must respect 0 < quartile < 100
-    '''
-    return np.percentile(vox_list,quartile)
-
-def RMS_list(vox_list:List)->float:
-    '''
-    Return the RMS of the input list.
-    '''
-    return np.sqrt(np.sum(np.array(vox_list)**2))
-
-def len_list(vox_list:List)->int:
-    '''
-    return the length of the list
-    '''
-    return len(vox_list)
 
 class POCA:
 
     
-    def __init__(self, output_dir:str, tracks:Tracking, cut_low_theta:float=0.0001)->None:
+    def __init__(self, tracks:Tracking, output_dir:str, cut_low_theta:float=0.0001)->None:
         
          # Create output directory
         self.output_dir = output_dir+"POCA/"
@@ -97,6 +63,7 @@ class POCA:
         # Voxel indices associated with POCA point location
         self.indices = self.assign_voxel_POCA()
         
+        
     def __repr__(self,) -> str:
         
         n_event = "Total # event = {}".format(len(self.mask_low_dtheta))
@@ -105,7 +72,6 @@ class POCA:
         
         return "POCA points:\n"+n_event+"\n"+n_event_dtheta+"\n"+n_in_VOI
         
-
         
     def create_directory(self, dir_name:str) -> None:
 
@@ -118,6 +84,7 @@ class POCA:
     def compute_total_mask(self) -> Tensor:
 
         total_mask = torch.zeros_like(self.mask_low_dtheta,dtype=bool)
+        print("")
         for i in progress_bar(range(len(self.mask_inside_VOI))):
             if(self.mask_inside_VOI[i]):
                 total_mask[np.flatnonzero(self.mask_low_dtheta)[i]]=True
