@@ -17,7 +17,7 @@ from volume.Volume_Interest import *
 
 class ASR():
 
-    def __init__(self, output_dir:str, tracks:Tracking=None, triggered_voxel_file:str=None):
+    def __init__(self, output_dir:str, tracks:Tracking=None, triggered_voxel_file:str=None) -> None:
         
         """
         Class used for Angle Statistic Reconstruction algorithm, from  
@@ -51,11 +51,10 @@ class ASR():
             
         elif(triggered_voxel_file is not None):
             with open(triggered_voxel_file,'rb') as f:
-                self.triggered_voxels = pickle.load(f)
-            
+                self.triggered_voxels = pickle.load(f)          
         
                 
-    def find_sub_volume(self)->List[Tensor]:
+    def find_sub_volume(self) -> List[Tensor]:
         r"""
         For each muon event, find the part of the VOI where voxels will be triggered
         by a muon track. When searching for triggered voxel for each track, it is better 
@@ -302,9 +301,9 @@ class ASR():
 
         # Assign score if the event respects the conditions in mask
         score_list,n_true = self.assign_score_voxel(triggered_voxels=self.triggered_voxels,
-                                                   score_list=score_list,
-                                                   score_feature=dtheta,
-                                                   masks = mask_dtheta)
+                                                    score_list=score_list,
+                                                    score_feature=dtheta,
+                                                    masks = mask_dtheta)
 
         # Compute final voxel scores using the desired function
         final_scores = self.compute_final_voxel_score(VOI=VOI,

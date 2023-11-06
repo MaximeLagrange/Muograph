@@ -302,9 +302,9 @@ class ASR():
 
         # Assign score if the event respects the conditions in mask
         score_list,n_true = self.assign_score_voxel(triggered_voxels=self.triggered_voxels,
-                                                   score_list=score_list,
-                                                   score_feature=dtheta,
-                                                   masks = mask_dtheta)
+                                                    score_list=score_list,
+                                                    score_feature=dtheta,
+                                                    masks = mask_dtheta)
 
         # Compute final voxel scores using the desired function
         final_scores = self.compute_final_voxel_score(VOI=VOI,

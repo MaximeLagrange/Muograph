@@ -233,9 +233,22 @@ def plot_POCA_points_multi_projection(POCA_points:Tensor,
 # POCA points location by slice
 def get_fig_size(VOI:VolumeInterest,
                  nrows:int,
-                 dims:Tuple[int]=(0,1),
                  ncols:int=3,
+                 dims:Tuple[int]=(0,1),
                  scale:float=3.) -> Tuple[float]:
+    
+    """
+    Compute matplotlib.pyplot.figure figsize, given the xy subplot ratio,
+    the number of columns and rows, and the total number of subplots.
+    
+    INPUT:
+    - VOI:VolumeInterest, an instance of the VolumeInterest class.
+    - nrows:int, the number of rows.
+    - ncols:int, the number of columns.
+    - dims:Tuple[int], the VOI dimensions to consider, e.g dim=(0,1) XY plane,
+    dim=(0,2) XZ plane dim=(1,2) YZ plane.
+    - scale:float, scale factor of the figure, e.g figsize with scale=2 is twice as big as scale=1.
+    """
     
     dx, dy = VOI.dxyz[dims[0]], VOI.dxyz[dims[1]]
     
@@ -249,6 +262,18 @@ def get_fig_size(VOI:VolumeInterest,
 
 def get_nrows(nplots:int,
               ncols:int) -> Tuple[int]:
+    """
+    Compute the number of columns of plt.subplots, given the total number of plots,
+    the number of columns.
+    
+    INPUT:
+     - nplots:int, the total number of plots.
+     - ncols:int, the number of columns.
+     
+    OUTPUT:
+     - nrows:int, the number of rows.
+     - extra:int, the number of subplots left empty when nplots%ncols!=0.
+    """
     
     if nplots%ncols==0:
         nrows, extra=int(nplots/ncols),0
@@ -262,6 +287,27 @@ def get_vmin_vmax(VOI:VolumeInterest,
                   poca_points, 
                   dim:int,
                   scale_binning:float=1.5) -> Tuple[float]:
+    
+    """
+    Compute the min and max number of poca points per voxel over the whole VOI by
+    scanning slice by slice. It allows to use a different binning in the horizontal
+    plane than the one from voxelization.
+    
+    INPUT:
+    - VOI:VolumeInterest, an instance of the VolumeInterest class.
+    - poca_points:torch.tensor, with size (n_poca, 3) the tensor containing 
+    the POCA points location.
+    - dim:int, the dimension along which the slice is taken. e.g if dim=2,
+    the scan if performed over each z slice of the VOI. if dim=1,
+    over y slice and dim=0, over x slice.
+    - scale_binning:float, defines how the binning scales w.r.t the voxelization of 
+    the voi. If scale==1, the bin size = voxel size. If scale==2, the bin size = 1/2
+    voxel size.
+    
+    OUTPUT:
+    - Tuple[float], the min and max number of poca points within a voxel computed 
+    over the whole VOI. 
+    """
     
     mins,maxs = [],[]
     
@@ -417,6 +463,137 @@ def plot_poca_points_by_voi_slice(poca_points:torch.tensor,
     if filename is not None: plt.savefig(filename)
     plt.show()
 
+# Scattering density by slices
+
+def plot_voi_pred_by_voi_slice(preds:torch.tensor,
+                               VOI:VolumeInterest, 
+                               dim:int=2,
+                               ncols:int=4,
+                               filename:str=None,
+                               axis_label_all:bool=False,
+                               fontsize:int=17,
+                               scale:float=10.) -> None:
+
+    """
+    Plots POCA points location as 2D histogram, for each slice of the VOI along a given dimension.
+    
+    INPUT:
+    
+    - pred:torch.tensor with size (nx,ny,nz,1) containing the 
+    score of each voxel, with ni the number of voxels along i.
+    - VOI:VolumeInterest, an instance of the volume of interest.
+    - dim:int=2, the dimension to consider. dim=0: x, dim=1: y, dim=2: z. 
+    e.g, if dim=2 poca points are represented as a 2D histogram in x and y 
+    for each VOI slice along z.
+    - ncols:int=4, the number of columns of the figure.
+    - filename:str=None, if filename is not None, figure save the figure as "filename".
+    - axis_label_all:bool=False. If True, axis labels are shown on every subplot.
+    """
+    # set fontsize
+    font = {'weight' : 'bold',
+            'size'   : fontsize}
+    
+    import matplotlib
+    matplotlib.rc('font', **font)
+    
+    # get # plots
+    nplots = int(VOI.n_vox_xyz[dim])
+    
+    if dim==2: dim_xy, dim_label = (0,1), ["x","y","z"]
+    elif dim==1: dim_xy, dim_label = (0,2), ["x","z","y"]
+    else: dim_xy, dim_label = (1,2), ["y","z","x"]
+    
+    # compute nrows given ncols
+    # extra the number of blank plots (if nplots%ncols!=0)
+    nrows, extra = get_nrows(nplots=nplots,
+                             ncols=ncols)
+        
+    # compute figure size
+    figsize = get_fig_size(VOI,
+                           nrows=nrows,
+                           ncols=ncols,
+                           dims=dim_xy,
+                           scale=scale)
+    
+    fig, axs = plt.subplots(ncols=ncols,
+                            nrows=nrows,
+                            figsize=figsize,
+                            sharex=True,
+                            sharey=True)
+    
+    axs = axs.ravel()
+    
+    # fig title
+    fig.suptitle("Scatering density predictions, pixel size = {} mm".format(VOI.vox_width),y=1.0)
+
+    # compute min and max value for colorscale
+    vmin, vmax = torch.min(preds), torch.max(preds)
+    
+    # Loop ober the number of voxels along `dim` dimension
+    for i in range(VOI.n_vox_xyz[dim]):
+        
+        if dim==2: 
+            preds_slice, z_min, z_max = preds[:,:,i], VOI.voxel_edges[0,0,i,0,2], VOI.voxel_edges[0,0,i,1,2]
+            x_labels, y_labels = VOI.voxel_centers[:,0,0,0].numpy(), VOI.voxel_centers[0,:,0,1]
+            
+        elif dim==1: 
+            preds_slice, z_min, z_max = preds[:,i], VOI.voxel_edges[0,i,0,0,1], VOI.voxel_edges[0,i,0,1,1]
+            x_labels, y_labels = VOI.voxel_centers[:,0,0,0].numpy(), VOI.voxel_centers[0,0,:,2]
+        else: 
+            preds_slice, z_min, z_max = preds[i], VOI.voxel_edges[i,0,0,0,0], VOI.voxel_edges[i,0,0,1,0]
+            x_labels, y_labels = VOI.voxel_centers[0,:,0,1].numpy(), VOI.voxel_centers[0,0,:,2]
+        
+        im = axs[i].imshow(preds_slice.T, 
+                           # interpolation='nearest', 
+                           origin='lower',
+                           vmin=vmin,
+                           vmax=vmax)
+        
+        axs[i].set_title(r"{} $\in$ [{:.0f},{:.0f}] mm".format(dim_label[2],z_min,z_max))
+        axs[i].set_aspect("equal")
+        
+        # set xy ticks
+        x_ticks, y_ticks = range(VOI.n_vox_xyz[dim_xy[0]]),range(VOI.n_vox_xyz[dim_xy[1]]) 
+        n = 4
+        if(len(x_ticks)%n==0):
+            x_n_ticks = [x_ticks[i] for i in range(len(x_ticks)) if i%(len(x_ticks)/n)==0]
+            y_n_ticks = [y_ticks[i] for i in range(len(y_ticks)) if i%(len(y_ticks)/n)==0]
+            x_n_labels = ["{:.0f}".format(x_labels[i]) for i in range(len(x_labels)) if i%(len(x_labels)/n)==0]
+            y_n_labels = ["{:.0f}".format(y_labels[i]) for i in range(len(y_labels)) if i%(len(y_labels)/n)==0]
+            
+        else:
+            x_n_ticks = [x_ticks[i] for i in range(len(x_ticks)) if i%(len(x_ticks)//n)==0]
+            y_n_ticks = [y_ticks[i] for i in range(len(y_ticks)) if i%(len(y_ticks)//n)==0]
+            x_n_labels = ["{:.0f}".format(x_labels[i]) for i in range(len(x_labels)) if i%(len(x_labels)//n)==0]
+            y_n_labels = ["{:.0f}".format(y_labels[i]) for i in range(len(y_labels)) if i%(len(y_labels)//n)==0]
+            
+        axs[i].set_xticks(x_n_ticks,labels=x_n_labels)
+        axs[i].set_yticks(y_n_ticks,labels=y_n_labels)
+        
+        # set axes x label 
+        if (i%ncols==0) | (i==0) | axis_label_all:
+            axs[i].set_ylabel("{} [mm]".format(dim_label[1]))
+        # set axes y label    
+        if (i>=nplots-ncols) | axis_label_all:
+            axs[i].set_xlabel("{} [mm]".format(dim_label[0]))
+    
+    # remove empty axis 
+    for i in range(1,extra+1):
+        axs[-i].remove()
+        axs[-i] = None
+        
+    # Add color bar
+    cbar_ax = fig.add_axes([1.01, 0.15, 0.05, 0.7])
+    fig.colorbar(im, cax=cbar_ax,label="scattering density [a.u]")
+        
+    # make it look nicer
+    plt.tight_layout()
+    
+    # save
+    if filename is not None: plt.savefig(filename)
+    plt.show()
+
+# Tracking visualization
     
 def plot_event_reconstruction(tracks:Tracking,
                               event:int=None,

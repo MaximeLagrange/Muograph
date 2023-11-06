@@ -32,7 +32,7 @@ class BCA(POCA):
          - cut_low_theta:0.001
         """
         # POCA initialization
-        super().__init__(tracks,cut_low_theta)
+        super().__init__(tracks,output_dir,cut_low_theta)
         
         # Copy tracks
         self.bca_tracks = deepcopy(self.tracks)

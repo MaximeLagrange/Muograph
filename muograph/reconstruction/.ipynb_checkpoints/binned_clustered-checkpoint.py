@@ -23,8 +23,16 @@ class BCA(POCA):
     
     def __init__(self, tracks:Tracking, output_dir:str, cut_low_theta:float=0.0001) -> None:
         
+        """
+        Set up the Binned clustered Algorithm.
+        
+        INPUT:
+         - tracks:Tracking, an instance of the Tracking class.
+         - output_dir:str, path to the directory where to save figures abd results.
+         - cut_low_theta:0.001
+        """
         # POCA initialization
-        super().__init__(tracks,cut_low_theta)
+        super().__init__(tracks,output_dir,cut_low_theta)
         
         # Copy tracks
         self.bca_tracks = deepcopy(self.tracks)
